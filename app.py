@@ -2711,8 +2711,8 @@ HTML = """
     background: var(--bg3);
     border-radius: 10px;
     padding: 16px;
-    font-size: 14px;
-    line-height: 1.7;
+    font-size: 17px;
+    line-height: 1.8;
     white-space: pre-wrap;
     word-break: break-word;
     max-height: 60vh;
