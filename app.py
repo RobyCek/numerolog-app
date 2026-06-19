@@ -2623,7 +2623,20 @@ HTML = """
   }
   .btn:active { background: var(--gold2); }
 
-  .tagline {
+  .btn-reset {
+    width: 100%;
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid #3a3a5a;
+    border-radius: 10px;
+    font-size: 14px;
+    padding: 11px;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: all 0.2s;
+    -webkit-appearance: none;
+  }
+  .btn-reset:active { background: #1a1a2e; color: var(--text); }
     text-align: center;
     font-size: 11px;
     color: #444;
@@ -2881,6 +2894,7 @@ HTML = """
     </div>
     <div class="errore" id="errore"></div>
     <button class="btn" onclick="calcola()">✦ CALCOLA ✦</button>
+    <button class="btn-reset" onclick="pulisciCampi()">✕ Pulisci</button>
     <p class="tagline">Decidi il tuo destino con il potere dei numeri</p>
   </div>
 
@@ -3201,6 +3215,17 @@ function salvaRiepilogo() {
   a.href = URL.createObjectURL(blob);
   a.download = d.nome + '-' + d.cognome + '-Riepilogo.txt';
   a.click();
+}
+
+function pulisciCampi() {
+  document.getElementById('nome').value = '';
+  document.getElementById('cognome').value = '';
+  document.getElementById('secondo_nome').value = '';
+  document.getElementById('data').value = '';
+  document.getElementById('errore').classList.remove('show');
+  document.getElementById('risultati').style.display = 'none';
+  try { localStorage.removeItem('numerolog_prefs'); } catch(e) {}
+  document.getElementById('nome').focus();
 }
 
 function formattaData(input) {
