@@ -2729,7 +2729,8 @@ HTML = """
 
   /* ── Testo libero ── */
   .testo-libero {
-    background: var(--bg3);
+    background: #fffde7;
+    color: #1a1a1a;
     border-radius: 10px;
     padding: 16px;
     font-size: 17px;
@@ -2808,15 +2809,20 @@ HTML = """
   .colori-sezione h3 { font-size: 13px; font-weight: 600; margin-bottom: 10px; }
   .colori-sezione h3.fav { color: #4caf50; }
   .colori-sezione h3.npos { color: #e53935; }
-  .colori-lista { display: flex; flex-wrap: wrap; gap: 12px; }
+  .colori-lista {
+    display: flex; flex-wrap: wrap; gap: 12px;
+    background: #ffffff;
+    border-radius: 10px;
+    padding: 14px;
+  }
   .colore-item { text-align: center; }
   .colore-rect {
     width: 70px; height: 50px;
     border-radius: 10px;
-    border: 1px solid #333;
+    border: 1px solid #ccc;
     margin: 0 auto 5px;
   }
-  .colore-nome { font-size: 11px; color: var(--muted); text-transform: capitalize; }
+  .colore-nome { font-size: 11px; color: #333333; text-transform: capitalize; }
 
   /* ── Salva ── */
   .btn-salva {
