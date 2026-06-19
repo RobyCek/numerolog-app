@@ -3105,9 +3105,9 @@ HTML = """
     <div class="sett-legenda">
       <div class="sett-legenda-title">Legenda</div>
       <div class="sett-legenda-items">
-        <span><span class="sett-dot" style="background:#4caf50"></span> Favorevole per quel numero psichico</span>
-        <span><span class="sett-dot" style="background:#e53935"></span> Da evitare per quel numero psichico</span>
-        <span><span class="sett-dot" style="background:#555"></span> Neutro</span>
+        <span style="color:#4caf50;font-size:16px">&#9679;</span> Favorevole per quel numero psichico &nbsp;&nbsp;
+        <span style="color:#e53935;font-size:16px">&#9679;</span> Da evitare per quel numero psichico &nbsp;&nbsp;
+        <span style="color:#444;font-size:16px">&#9675;</span> Neutro
       </div>
       <div class="sett-legenda-note">
         Ogni riga è un giorno della settimana. Le 9 colonne mostrano i numeri psichici (1–9)
@@ -3363,8 +3363,9 @@ function disegnaSettimana() {
       var redList = pData.red || [];
       var isFav = favList.indexOf(dom) >= 0;
       var isRed = redList.indexOf(dom) >= 0;
-      var dotColor = isFav ? '#4caf50' : (isRed ? '#e53935' : '#555');
-      tbHtml += '<td><span class="sett-dot" style="background:' + dotColor + '"></span></td>';
+      var dotColor = isFav ? '#4caf50' : (isRed ? '#e53935' : '#444');
+      var dotSymbol = isFav ? '&#9679;' : (isRed ? '&#9679;' : '&#9675;');
+      tbHtml += '<td style="color:' + dotColor + ';font-size:16px;line-height:1">' + dotSymbol + '</td>';
     }
     tbHtml += '</tr>';
   }
