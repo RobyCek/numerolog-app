@@ -2792,7 +2792,7 @@ HTML = """
   .cal-day.vuoto { background: transparent; }
   .cal-day.favorevole { background: var(--green); color: #fff; }
   .cal-day.rosso { background: var(--red); color: #fff; }
-  .cal-day.oggi { outline: 2px solid var(--gold); outline-offset: -2px; }
+  .cal-day.oggi { color: #c9a96e !important; font-size: 18px; font-weight: 700; outline: none; }
   .cal-legenda {
     display: flex;
     gap: 16px;
