@@ -2,9 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 NumerologApp Web — Flask edition
-Avvio: python3 app.py
-Accesso: http://localhost:5000  (locale)
-         http://IP_DEL_MAC:5000 (rete locale da iPad/iPhone)
+Avvio locale: python3 app.py  →  http://localhost:5000
 """
 
 from flask import Flask, request, jsonify, render_template_string
@@ -13,43 +11,8 @@ import re, json, calendar, datetime
 app = Flask(__name__)
 
 # ══════════════════════════════════════════════
-# LOGICA NUMEROLOGICA (estratta da numerolog_app.py)
-# ══════════════════════════════════════════════
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-NumerologApp - App di Numerologia Vedica
-Costruita con CustomTkinter per macOS e iPad
-"""
-
-import re
-import json
-import os
-import calendar
-from pathlib import Path
-
-# File per il salvataggio degli ultimi dati inseriti
-PREFS_FILE = Path.home() / ".numerologapp_prefs.json"
-
-def salva_prefs(dati: dict):
-    try:
-        with open(PREFS_FILE, "w", encoding="utf-8") as f:
-            json.dump(dati, f, ensure_ascii=False, indent=2)
-    except Exception:
-        pass
-
-def carica_prefs() -> dict:
-    try:
-        if PREFS_FILE.exists():
-            with open(PREFS_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-    except Exception:
-        pass
-    return {}
-
-# ─────────────────────────────────────────────
 # TESTO NUMEROLOGIA INCORPORATO
-# ─────────────────────────────────────────────
+# ══════════════════════════════════════════════
 NUMEROLOGIA_TEXT = """# NUMERO 1: SOLE
 
 ### NUMERO DEL CARATTERE
@@ -2330,8 +2293,26 @@ Ricordiamo che Marte si è inginocchiato davanti a Venere, pertanto per un 9 ave
 * **PERSONAGGI FAMOSI:** Giovanni Falcone, Jimi Hendrix, Robert Redford, Roberto Benigni, Josif Stalin, Whitney Houston, Yoko Ono.
 """
 
+
+# ══════════════════════════════════════════════
+# LOGICA NUMEROLOGICA
+# ══════════════════════════════════════════════
+import re
+
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+NumerologApp - App di Numerologia Vedica
+Costruita con CustomTkinter per macOS e iPad
+"""
+
+
+# File per il salvataggio degli ultimi dati inseriti
+
 # ─────────────────────────────────────────────
-# TABELLA NUMEROLOGICA
+# TESTO NUMEROLOGIA INCORPORATO
+# ─────────────────────────────────────────────
+
 # ─────────────────────────────────────────────
 LETTERA_NUMERO = {
     'A':1,'B':2,'C':3,'D':4,'E':5,'F':8,'G':3,'H':5,'I':1,'J':1,
@@ -2529,9 +2510,6 @@ def estrai_colori(testo_karma: str):
 
 
 
-# ══════════════════════════════════════════════
-# HTML TEMPLATE
-# ══════════════════════════════════════════════
 HTML = """
 <!DOCTYPE html>
 <html lang="it">
