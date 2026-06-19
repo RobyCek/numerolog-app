@@ -2860,19 +2860,24 @@ HTML = """
     <h2>📝 Dati personali</h2>
     <div class="field">
       <label>Nome *</label>
-      <input type="text" id="nome" placeholder="Es. Marco" autocomplete="given-name">
+      <input type="text" id="nome" placeholder="Es. Marco" autocomplete="given-name"
+             onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('cognome').focus();}">
     </div>
     <div class="field">
       <label>Cognome *</label>
-      <input type="text" id="cognome" placeholder="Es. Rossi" autocomplete="family-name">
+      <input type="text" id="cognome" placeholder="Es. Rossi" autocomplete="family-name"
+             onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('secondo_nome').focus();}">
     </div>
     <div class="field">
       <label>Secondo nome</label>
-      <input type="text" id="secondo_nome" placeholder="Opzionale">
+      <input type="text" id="secondo_nome" placeholder="Opzionale"
+             onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('data').focus();}">
     </div>
     <div class="field">
       <label>Data di nascita * (GG.MM.AAAA)</label>
-      <input type="text" id="data" placeholder="Es. 23.05.1985" inputmode="numeric">
+      <input type="text" id="data" placeholder="Es. 23.05.1985" inputmode="numeric"
+             onkeydown="if(event.key==='Enter'){event.preventDefault();calcola();}"
+             onblur="formattaData(this)">
     </div>
     <div class="errore" id="errore"></div>
     <button class="btn" onclick="calcola()">✦ CALCOLA ✦</button>
@@ -3198,6 +3203,15 @@ function salvaRiepilogo() {
   a.click();
 }
 
+function formattaData(input) {
+  var v = input.value.replace(/[^0-9]/g, '');
+  if (v.length === 8) {
+    input.value = v.substring(0,2) + '.' + v.substring(2,4) + '.' + v.substring(4,8);
+  } else if (v.length >= 4) {
+    input.value = v.substring(0,2) + '.' + v.substring(2,4) + (v.length > 4 ? '.' + v.substring(4) : '');
+  }
+}
+
 window.onload = function() {
   try {
     var p = JSON.parse(localStorage.getItem('numerolog_prefs') || '{}');
@@ -3208,9 +3222,7 @@ window.onload = function() {
   } catch(e) {}
 };
 
-document.addEventListener('keydown', function(e) {
-  if (e.key === 'Enter') calcola();
-});
+
 </script>
 </body>
 </html>
