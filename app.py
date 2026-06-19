@@ -2637,6 +2637,14 @@ HTML = """
     -webkit-appearance: none;
   }
   .btn-reset:active { background: #1a1a2e; color: var(--text); }
+
+  .tagline {
+    text-align: center;
+    font-size: 11px;
+    color: #3a3a5a;
+    margin-top: 10px;
+    font-style: italic;
+  }
     text-align: center;
     font-size: 11px;
     color: #444;
