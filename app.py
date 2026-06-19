@@ -2971,17 +2971,31 @@ HTML = """
 </div><!-- /container -->
 
 <script>
-let _dati = {};
-let _calAnno, _calMese;
-let _giorniFav = [], _giorniRossi = [];
+var _dati = {};
+var _calAnno, _calMese;
+var _giorniFav = [], _giorniRossi = [];
 
-// ── Calcola ──────────────────────────────────
-async function calcola() {
-  const nome        = document.getElementById('nome').value.trim();
-  const cognome     = document.getElementById('cognome').value.trim();
-  const secondoNome = document.getElementById('secondo_nome').value.trim();
-  const data        = document.getElementById('data').value.trim();
-  const errDiv      = document.getElementById('errore');
+var COLORE_HEX = {
+  "rosso":"#e53935","nero":"#1a1a1a","giallo":"#fdd835","giallo chiaro":"#fff59d",
+  "giallo grano":"#f0d080","giallo brillante":"#ffe000","oro":"#d4a017","rame":"#b87333",
+  "verde":"#43a047","verde chiaro":"#a5d6a7","verde scuro":"#1b5e20","blu":"#1e88e5",
+  "blu chiaro":"#64b5f6","blu scuro":"#0d47a1","blu brillante":"#2979ff","celeste":"#80deea",
+  "viola":"#8e24aa","lilla":"#ce93d8","rosa":"#f48fb1","arancione":"#fb8c00",
+  "bianco perla":"#f5f5f0","bianco perlato":"#f0ece4","grigio":"#9e9e9e",
+  "grigio chiaro":"#e0e0e0","grigio fumo":"#607d8b","caffe":"#6d4c41",
+  "sandalo":"#c8a87a","tutti":"#ffffff"
+};
+
+var MESI = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno',
+            'Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+var GIORNI_HDR = ['Lun','Mar','Mer','Gio','Ven','Sab','Dom'];
+
+function calcola() {
+  var nome        = document.getElementById('nome').value.trim();
+  var cognome     = document.getElementById('cognome').value.trim();
+  var secondoNome = document.getElementById('secondo_nome').value.trim();
+  var data        = document.getElementById('data').value.trim();
+  var errDiv      = document.getElementById('errore');
 
   errDiv.classList.remove('show');
 
@@ -2990,7 +3004,8 @@ async function calcola() {
     errDiv.classList.add('show');
     return;
   }
-  if ((data.replace(/\D/g,'')).length !== 8) {
+  var cifre = data.replace(/[^0-9]/g, '');
+  if (cifre.length !== 8) {
     errDiv.textContent = 'La data deve avere 8 cifre. Formato: GG.MM.AAAA';
     errDiv.classList.add('show');
     return;
@@ -2999,120 +3014,113 @@ async function calcola() {
   document.getElementById('spinner').classList.add('show');
   document.getElementById('risultati').style.display = 'none';
 
-  try {
-    const res = await fetch('/calcola', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({nome, cognome, secondo_nome: secondoNome, data})
-    });
-    const d = await res.json();
-    if (d.errore) { throw new Error(d.errore); }
-
+  var xhr = new XMLHttpRequest();
+  xhr.open('POST', '/calcola');
+  xhr.setRequestHeader('Content-Type', 'application/json');
+  xhr.onload = function() {
+    var d;
+    try { d = JSON.parse(xhr.responseText); } catch(e) {
+      document.getElementById('errore').textContent = 'Errore di risposta dal server.';
+      document.getElementById('errore').classList.add('show');
+      document.getElementById('spinner').classList.remove('show');
+      return;
+    }
+    if (d.errore) {
+      document.getElementById('errore').textContent = d.errore;
+      document.getElementById('errore').classList.add('show');
+      document.getElementById('spinner').classList.remove('show');
+      return;
+    }
     _dati = d;
-
-    // Salva in localStorage
-    localStorage.setItem('numerolog_prefs', JSON.stringify({nome, cognome, secondo_nome: secondoNome, data}));
-
+    try { localStorage.setItem('numerolog_prefs', JSON.stringify({nome:nome,cognome:cognome,secondo_nome:secondoNome,data:data})); } catch(e) {}
     popolaRisultati(d);
     document.getElementById('risultati').style.display = 'block';
     document.getElementById('spinner').classList.remove('show');
     document.getElementById('risultati').scrollIntoView({behavior:'smooth'});
-  } catch(e) {
-    errDiv.textContent = e.message || 'Errore nel calcolo.';
-    errDiv.classList.add('show');
+  };
+  xhr.onerror = function() {
+    document.getElementById('errore').textContent = 'Errore di connessione.';
+    document.getElementById('errore').classList.add('show');
     document.getElementById('spinner').classList.remove('show');
-  }
+  };
+  xhr.send(JSON.stringify({nome:nome, cognome:cognome, secondo_nome:secondoNome, data:data}));
 }
 
-// ── Popola risultati ─────────────────────────
 function popolaRisultati(d) {
-  // Anagrafica
-  const sec = d.secondo_nome ? ' ' + d.secondo_nome : '';
-  document.getElementById('anagrafica').innerHTML = `
-    <div class="ana-row"><span class="lbl">Nome</span><span class="val">${d.nome}${sec} <span class="num-small">(${d.val_nome})</span></span></div>
-    <div class="ana-row"><span class="lbl">Cognome</span><span class="val">${d.cognome} <span class="num-small">(${d.val_cognome})</span></span></div>
-    <div class="ana-row"><span class="lbl">Data di nascita</span><span class="val">${d.data}</span></div>
-  `;
+  var sec = d.secondo_nome ? ' ' + d.secondo_nome : '';
 
-  // Griglia numeri
-  const items = [
+  document.getElementById('anagrafica').innerHTML =
+    '<div class="ana-row"><span class="lbl">Nome</span><span class="val">' + d.nome + sec + ' <span class="num-small">(' + d.val_nome + ')</span></span></div>' +
+    '<div class="ana-row"><span class="lbl">Cognome</span><span class="val">' + d.cognome + ' <span class="num-small">(' + d.val_cognome + ')</span></span></div>' +
+    '<div class="ana-row"><span class="lbl">Data di nascita</span><span class="val">' + d.data + '</span></div>';
+
+  var items = [
     {label:'Firma', n:d.firma_num, p:d.firma_pianeta, e:d.firma_energia},
     {label:'Karma', n:d.karma_num, p:d.karma_pianeta, e:d.karma_energia},
     {label:'N. Psichico', n:d.psichico_num, p:d.psichico_pianeta, e:d.psichico_energia},
-    {label:'Freq. Nome', n:d.freq_nome_num, p:d.freq_nome_pianeta, e:d.freq_nome_energia},
+    {label:'Freq. Nome', n:d.freq_nome_num, p:d.freq_nome_pianeta, e:d.freq_nome_energia}
   ];
-  document.getElementById('numeri-grid').innerHTML = items.map(i => `
-    <div class="num-box">
-      <div class="label">${i.label}</div>
-      <div class="numero">${i.n}</div>
-      <div class="pianeta">${i.p}</div>
-      <div class="energia">${i.e}</div>
-    </div>
-  `).join('');
+  document.getElementById('numeri-grid').innerHTML = items.map(function(i) {
+    return '<div class="num-box">' +
+      '<div class="label">' + i.label + '</div>' +
+      '<div class="numero">' + i.n + '</div>' +
+      '<div class="pianeta">' + i.p + '</div>' +
+      '<div class="energia">' + i.e + '</div>' +
+    '</div>';
+  }).join('');
 
-  // Firma ideale
   if (d.firma_ideale) {
     document.getElementById('firma-ideale-val').textContent = d.firma_ideale;
     document.getElementById('firma-ideale-box').style.display = 'block';
   }
 
-  // Personaggi
   if (d.personaggi && d.personaggi.length) {
     document.getElementById('personaggi-card').style.display = 'block';
-    document.getElementById('personaggi-table').innerHTML = d.personaggi.map(p =>
-      `<tr><td>${p[0]}</td><td>${p[1]}</td></tr>`
-    ).join('');
+    document.getElementById('personaggi-table').innerHTML = d.personaggi.map(function(p) {
+      return '<tr><td>' + p[0] + '</td><td>' + p[1] + '</td></tr>';
+    }).join('');
   }
 
-  // Testi Firma e Karma
   document.getElementById('testo-firma').textContent = d.testo_firma;
   document.getElementById('testo-karma').textContent = d.testo_karma;
 
-  // Calendario
   _giorniFav   = d.giorni_fav;
   _giorniRossi = d.giorni_rossi;
-  const oggi = new Date();
+  var oggi = new Date();
   _calAnno = oggi.getFullYear();
   _calMese = oggi.getMonth() + 1;
   disegnaCalendario();
   document.getElementById('cal-info').textContent =
     'Favorevoli: ' + _giorniFav.join(', ') + '   |   Da evitare: ' + _giorniRossi.join(', ');
 
-  // Colori
   popolaColori('colori-fav',  d.colori_fav);
   popolaColori('colori-npos', d.colori_npos);
 }
 
-// ── Calendario ───────────────────────────────
-const MESI = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno',
-              'Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
-const GIORNI_HDR = ['Lun','Mar','Mer','Gio','Ven','Sab','Dom'];
-
 function disegnaCalendario() {
   document.getElementById('cal-mese').textContent = MESI[_calMese-1] + '  ' + _calAnno;
-  const oggi = new Date();
-  const primoGiorno = new Date(_calAnno, _calMese-1, 1).getDay(); // 0=Dom
-  const offset = (primoGiorno === 0) ? 6 : primoGiorno - 1;      // Lun=0
-  const totGiorni = new Date(_calAnno, _calMese, 0).getDate();
+  var oggi = new Date();
+  var primoGiorno = new Date(_calAnno, _calMese-1, 1).getDay();
+  var offset = (primoGiorno === 0) ? 6 : primoGiorno - 1;
+  var totGiorni = new Date(_calAnno, _calMese, 0).getDate();
 
-  let html = GIORNI_HDR.map(g => `<div class="cal-header">${g}</div>`).join('');
-
-  let celle = offset;
-  for (let i = 0; i < offset; i++) html += '<div class="cal-day vuoto"></div>';
-
-  for (let g = 1; g <= totGiorni; g++) {
-    let cls = 'cal-day';
-    if (_giorniFav.includes(g))   cls += ' favorevole';
-    else if (_giorniRossi.includes(g)) cls += ' rosso';
+  var html = '';
+  for (var gi = 0; gi < GIORNI_HDR.length; gi++) {
+    html += '<div class="cal-header">' + GIORNI_HDR[gi] + '</div>';
+  }
+  for (var i = 0; i < offset; i++) html += '<div class="cal-day vuoto"></div>';
+  var celle = offset;
+  for (var g = 1; g <= totGiorni; g++) {
+    var cls = 'cal-day';
+    if (_giorniFav.indexOf(g) >= 0)   cls += ' favorevole';
+    else if (_giorniRossi.indexOf(g) >= 0) cls += ' rosso';
     if (oggi.getFullYear()===_calAnno && oggi.getMonth()+1===_calMese && oggi.getDate()===g)
       cls += ' oggi';
-    html += `<div class="${cls}">${g}</div>`;
+    html += '<div class="' + cls + '">' + g + '</div>';
     celle++;
   }
-  // Riempie ultima riga
-  const resto = (celle % 7);
-  if (resto > 0) for (let i = 0; i < 7-resto; i++) html += '<div class="cal-day vuoto"></div>';
-
+  var resto = celle % 7;
+  if (resto > 0) for (var r = 0; r < 7-resto; r++) html += '<div class="cal-day vuoto"></div>';
   document.getElementById('cal-grid').innerHTML = html;
 }
 
@@ -3123,93 +3131,76 @@ function calMese(delta) {
   disegnaCalendario();
 }
 
-// ── Colori ───────────────────────────────────
-const COLORE_HEX = {
-  "rosso":"#e53935","nero":"#1a1a1a","giallo":"#fdd835","giallo chiaro":"#fff59d",
-  "giallo grano":"#f0d080","giallo brillante":"#ffe000","oro":"#d4a017","rame":"#b87333",
-  "verde":"#43a047","verde chiaro":"#a5d6a7","verde scuro":"#1b5e20","blu":"#1e88e5",
-  "blu chiaro":"#64b5f6","blu scuro":"#0d47a1","blu brillante":"#2979ff","celeste":"#80deea",
-  "viola":"#8e24aa","lilla":"#ce93d8","rosa":"#f48fb1","arancione":"#fb8c00",
-  "bianco perla":"#f5f5f0","bianco perlato":"#f0ece4","grigio":"#9e9e9e",
-  "grigio chiaro":"#e0e0e0","grigio fumo":"#607d8b","caffè":"#6d4c41",
-  "sandalo":"#c8a87a","tutti":"#ffffff"
-};
-
 function popolaColori(id, lista) {
-  const el = document.getElementById(id);
+  var el = document.getElementById(id);
   if (!lista || !lista.length || lista[0] === 'nessuno') {
     el.innerHTML = '<span style="color:var(--muted);font-size:13px">Nessuno</span>';
     return;
   }
-  el.innerHTML = lista.map(c => {
-    const hex = COLORE_HEX[c] || '#555';
-    return `<div class="colore-item">
-      <div class="colore-rect" style="background:${hex};border-color:${hex === '#1a1a1a' ? '#444' : hex}"></div>
-      <div class="colore-nome">${c}</div>
-    </div>`;
+  el.innerHTML = lista.map(function(c) {
+    var nome_key = c.replace('\u00e8', 'e');
+    var hex = COLORE_HEX[nome_key] || COLORE_HEX[c] || '#555';
+    var border = (hex === '#1a1a1a') ? '#444' : hex;
+    return '<div class="colore-item">' +
+      '<div class="colore-rect" style="background:' + hex + ';border-color:' + border + '"></div>' +
+      '<div class="colore-nome">' + c + '</div>' +
+    '</div>';
   }).join('');
 }
 
-// ── Tabs ─────────────────────────────────────
 function mostraTab(id, el) {
-  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  var panels = document.querySelectorAll('.panel');
+  for (var i = 0; i < panels.length; i++) panels[i].classList.remove('active');
+  var tabs = document.querySelectorAll('.tab');
+  for (var i = 0; i < tabs.length; i++) tabs[i].classList.remove('active');
   document.getElementById('panel-' + id).classList.add('active');
   el.classList.add('active');
 }
 
-// ── Salvataggio ──────────────────────────────
 function salvaTesto(id, tipo) {
-  const testo = document.getElementById(id).textContent;
-  const nome  = (_dati.nome || 'Nome') + '-' + (_dati.cognome || 'Cognome');
-  const blob  = new Blob([testo], {type:'text/plain;charset=utf-8'});
-  const a     = document.createElement('a');
-  a.href      = URL.createObjectURL(blob);
-  a.download  = nome + '-' + tipo + '.txt';
+  var testo = document.getElementById(id).textContent;
+  var nome  = (_dati.nome || 'Nome') + '-' + (_dati.cognome || 'Cognome');
+  var blob  = new Blob([testo], {type:'text/plain;charset=utf-8'});
+  var a     = document.createElement('a');
+  a.href    = URL.createObjectURL(blob);
+  a.download = nome + '-' + tipo + '.txt';
   a.click();
 }
 
 function salvaRiepilogo() {
-  const d = _dati;
+  var d = _dati;
   if (!d.nome) return;
-  const sec = d.secondo_nome ? ' ' + d.secondo_nome : '';
-  const testo = [
-    '═'.repeat(45),
-    '  RIEPILOGO NUMEROLOGICO',
-    '═'.repeat(45),
+  var sec = d.secondo_nome ? ' ' + d.secondo_nome : '';
+  var righe = [
+    'Nome          : ' + d.nome + sec + ' (' + d.val_nome + ')',
+    'Cognome       : ' + d.cognome + ' (' + d.val_cognome + ')',
+    'Data nascita  : ' + d.data,
     '',
-    `  Nome          : ${d.nome}${sec} (${d.val_nome})`,
-    `  Cognome       : ${d.cognome} (${d.val_cognome})`,
-    `  Data nascita  : ${d.data}`,
+    'Firma         : ' + d.firma_num + '  (' + d.firma_pianeta + ')',
+    'Karma         : ' + d.karma_num + '  (' + d.karma_pianeta + ')',
+    'N. Psichico   : ' + d.psichico_num + '  (' + d.psichico_pianeta + ')',
+    'Freq. Nome    : ' + d.freq_nome_num + '  (' + d.freq_nome_pianeta + ')',
     '',
-    '─'.repeat(45),
+    d.firma_ideale ? ('Firma Ideale  : ' + d.firma_ideale) : '',
     '',
-    `  Firma         : ${d.firma_num}  (${d.firma_pianeta})  —  ${d.firma_energia}`,
-    `  Karma         : ${d.karma_num}  (${d.karma_pianeta})  —  ${d.karma_energia}`,
-    `  N. Psichico   : ${d.psichico_num}  (${d.psichico_pianeta})  —  ${d.psichico_energia}`,
-    `  Freq. Nome    : ${d.freq_nome_num}  (${d.freq_nome_pianeta})  —  ${d.freq_nome_energia}`,
-    '',
-    d.firma_ideale ? `  Firma Ideale  : ${d.firma_ideale}` : '',
-    '',
-    '─'.repeat(45),
-    '  PERSONAGGI FAMOSI',
-    '─'.repeat(45),
-    ...(d.personaggi || []).map(p => `  ${p[0].padEnd(26)}${p[1]}`),
-    '',
-    '═'.repeat(45),
-  ].join('\n');
-
-  const blob = new Blob([testo], {type:'text/plain;charset=utf-8'});
-  const a = document.createElement('a');
+    'PERSONAGGI FAMOSI'
+  ];
+  if (d.personaggi) {
+    for (var i = 0; i < d.personaggi.length; i++) {
+      righe.push(d.personaggi[i][0] + ' - ' + d.personaggi[i][1]);
+    }
+  }
+  var testo = righe.join(String.fromCharCode(10));
+  var blob = new Blob([testo], {type:'text/plain;charset=utf-8'});
+  var a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = d.nome + '-' + d.cognome + '-Riepilogo.txt';
   a.click();
 }
 
-// ── Ripristina ultimi dati ───────────────────
-window.onload = () => {
+window.onload = function() {
   try {
-    const p = JSON.parse(localStorage.getItem('numerolog_prefs') || '{}');
+    var p = JSON.parse(localStorage.getItem('numerolog_prefs') || '{}');
     if (p.nome)         document.getElementById('nome').value = p.nome;
     if (p.cognome)      document.getElementById('cognome').value = p.cognome;
     if (p.secondo_nome) document.getElementById('secondo_nome').value = p.secondo_nome;
@@ -3217,8 +3208,7 @@ window.onload = () => {
   } catch(e) {}
 };
 
-// Calcola con Enter
-document.addEventListener('keydown', e => {
+document.addEventListener('keydown', function(e) {
   if (e.key === 'Enter') calcola();
 });
 </script>
@@ -3231,7 +3221,8 @@ document.addEventListener('keydown', e => {
 # ══════════════════════════════════════════════
 @app.route('/')
 def index():
-    return render_template_string(HTML)
+    from flask import Response
+    return Response(HTML, mimetype="text/html")
 
 
 @app.route('/calcola', methods=['POST'])
