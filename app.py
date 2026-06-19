@@ -2924,7 +2924,7 @@ HTML = """
     <!-- TABS -->
     <div class="tabs">
       <div class="tab active" onclick="mostraTab('riepilogo', this)">📊 Riepilogo</div>
-      <div class="tab" onclick="mostraTab('firma', this)">🌟 Firma</div>
+      <div class="tab" onclick="mostraTab('firma', this)">🌟 Numero del Carattere</div>
       <div class="tab" onclick="mostraTab('karma', this)">⚡ Karma</div>
       <div class="tab" onclick="mostraTab('calendario', this)">📅 Calendario</div>
       <div class="tab" onclick="mostraTab('colori', this)">🎨 Colori</div>
@@ -2951,7 +2951,7 @@ HTML = """
     <!-- FIRMA -->
     <div class="panel" id="panel-firma">
       <div class="card">
-        <h2>🌟 Numero Psichico</h2>
+        <h2>🌟 Numero del Carattere</h2>
         <div class="testo-libero" id="testo-firma"></div>
       </div>
       <a class="btn-salva" href="#" onclick="salvaTesto('testo-firma', 'firma'); return false;">💾 Salva</a>
