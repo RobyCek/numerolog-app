@@ -2426,6 +2426,29 @@ def estrai_giorni(testo_karma: str):
     return favorevoli, rossi
 
 
+def _build_giorni_tutti_psichici():
+    """Pre-calcola giorni favorevoli e rossi per tutti e 9 i numeri psichici."""
+    section_starts = []
+    for mm in re.finditer(r"# NUMERO (\d+):", NUMEROLOGIA_TEXT):
+        section_starts.append((int(mm.group(1)), mm.start()))
+    result = {}
+    for i, (num, pos) in enumerate(section_starts):
+        end = section_starts[i+1][1] if i+1 < len(section_starts) else len(NUMEROLOGIA_TEXT)
+        section = NUMEROLOGIA_TEXT[pos:end]
+        fav_matches = re.findall(r'Giorni favorevoli[:\s]+([\d,\s]+?)(?:\.|Colori)', section)
+        red_matches = re.findall(r'Giorni da bollino rosso[:\s]+([\d,\s]+?)\.', section)
+        fav = set()
+        for match in fav_matches:
+            fav.update(int(d.strip()) for d in match.split(',') if d.strip().isdigit())
+        red = set()
+        for match in red_matches:
+            red.update(int(d.strip()) for d in match.split(',') if d.strip().isdigit())
+        result[num] = {'fav': sorted(fav), 'red': sorted(red)}
+    return result
+
+GIORNI_TUTTI_PSICHICI = _build_giorni_tutti_psichici()
+
+
 # Mappa nomi colori italiani → hex
 COLORE_HEX = {
     "rosso":                       "#e53935",
@@ -2804,6 +2827,61 @@ HTML = """
   .cal-legenda span { display: flex; align-items: center; gap: 6px; }
   .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
 
+  /* ── Settimana ── */
+  .sett-nav {
+    display: flex; align-items: center; justify-content: center; gap: 16px;
+    margin-bottom: 14px;
+  }
+  .sett-nav button {
+    background: var(--card2); border: none; border-radius: 8px;
+    color: var(--text); font-size: 18px; width: 36px; height: 36px;
+    cursor: pointer;
+  }
+  .sett-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .sett-table {
+    width: 100%; border-collapse: collapse;
+    font-size: 12px;
+  }
+  .sett-table thead tr { background: var(--card2); }
+  .sett-table th {
+    padding: 8px 4px; font-size: 11px; font-weight: 600;
+    color: var(--gold); text-align: center; white-space: nowrap;
+  }
+  .sett-table th:first-child { text-align: left; padding-left: 8px; min-width: 100px; }
+  .sett-table td {
+    padding: 6px 4px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.05);
+    vertical-align: middle;
+  }
+  .sett-table td:first-child {
+    text-align: left; padding-left: 8px; font-size: 11px;
+    color: var(--muted); white-space: nowrap; font-weight: 500;
+  }
+  .sett-table tr.sett-row-oggi td { background: rgba(212,160,23,0.08); }
+  .sett-table tr.sett-row-oggi td:first-child { color: var(--gold); font-weight: 700; }
+  .sett-dot {
+    width: 14px; height: 14px; border-radius: 50%;
+    display: inline-block; flex-shrink: 0;
+  }
+  .sett-cell { display: flex; align-items: center; justify-content: center; gap: 3px; }
+  .sett-day-num { font-size: 10px; color: var(--muted); }
+  .sett-legenda {
+    margin-top: 18px; padding: 14px; background: var(--card2);
+    border-radius: 10px; font-size: 12px;
+  }
+  .sett-legenda-title {
+    font-weight: 700; color: var(--gold); margin-bottom: 10px; font-size: 13px;
+  }
+  .sett-legenda-items {
+    display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 10px;
+  }
+  .sett-legenda-items span {
+    display: flex; align-items: center; gap: 6px; color: var(--muted);
+  }
+  .sett-legenda-note {
+    color: var(--muted); line-height: 1.6; font-size: 11px;
+    border-top: 1px solid rgba(255,255,255,0.07); padding-top: 10px;
+  }
+
   /* ── Colori ── */
   .colori-sezione { margin-bottom: 20px; }
   .colori-sezione h3 { font-size: 13px; font-weight: 600; margin-bottom: 10px; }
@@ -2927,6 +3005,7 @@ HTML = """
       <div class="tab" onclick="mostraTab('firma', this)">🌟 Numero del Carattere</div>
       <div class="tab" onclick="mostraTab('karma', this)">⚡ Karma</div>
       <div class="tab" onclick="mostraTab('calendario', this)">📅 Calendario</div>
+      <div class="tab" onclick="mostraTab('settimana', this)">🗓️ Numerologia della Settimana</div>
       <div class="tab" onclick="mostraTab('colori', this)">🎨 Colori</div>
     </div>
 
@@ -2985,6 +3064,41 @@ HTML = """
       </div>
     </div>
 
+    <!-- NUMEROLOGIA DELLA SETTIMANA -->
+    <div class="panel" id="panel-settimana">
+      <div class="card">
+        <h2>🗓️ Numerologia della Settimana</h2>
+        <div class="sett-nav">
+          <button onclick="settSettimana(-1)">◀</button>
+          <span class="mese" id="sett-label"></span>
+          <button onclick="settSettimana(+1)">▶</button>
+        </div>
+        <div class="sett-table-wrap">
+          <table class="sett-table" id="sett-table">
+            <thead>
+              <tr id="sett-thead-days"></tr>
+            </thead>
+            <tbody id="sett-tbody"></tbody>
+          </table>
+        </div>
+        <div class="sett-legenda">
+          <div class="sett-legenda-title">Legenda</div>
+          <div class="sett-legenda-items">
+            <span><span class="dot" style="background:#4caf50"></span> Giorno favorevole per quel numero psichico</span>
+            <span><span class="dot" style="background:#e53935"></span> Giorno da evitare per quel numero psichico</span>
+            <span><span class="dot" style="background:#888"></span> Giorno neutro</span>
+          </div>
+          <div class="sett-legenda-note">
+            I numeri psichici (1–9) corrispondono ai pianeti della numerologia vedica.
+            Ogni riga mostra uno dei 9 numeri psichici e indica, per ogni giorno della settimana,
+            se quel giorno del mese è energeticamente favorevole (🟢) o da evitare (🔴) per le persone
+            con quel numero psichico — indipendentemente dal numero psichico personale dell'utente.
+          </div>
+        </div>
+        <a class="btn-salva" href="#" onclick="salvaSettimana(); return false;">💾 Salva settimana</a>
+      </div>
+    </div>
+
     <!-- COLORI -->
     <div class="panel" id="panel-colori">
       <div class="card">
@@ -3007,6 +3121,8 @@ HTML = """
 var _dati = {};
 var _calAnno, _calMese;
 var _giorniFav = [], _giorniRossi = [];
+var _giorniTuttiPsichici = {};
+var _settAnno, _settSettimanaNum;
 
 var COLORE_HEX = {
   "rosso":"#e53935","nero":"#1a1a1a","giallo":"#fdd835","giallo chiaro":"#fff59d",
@@ -3119,12 +3235,17 @@ function popolaRisultati(d) {
 
   _giorniFav   = d.giorni_fav;
   _giorniRossi = d.giorni_rossi;
+  _giorniTuttiPsichici = d.giorni_tutti_psichici || {};
   var oggi = new Date();
   _calAnno = oggi.getFullYear();
   _calMese = oggi.getMonth() + 1;
   disegnaCalendario();
   document.getElementById('cal-info').textContent =
     'Favorevoli: ' + _giorniFav.join(', ') + '   |   Da evitare: ' + _giorniRossi.join(', ');
+
+  _settAnno = oggi.getFullYear();
+  _settSettimanaNum = _isoWeek(oggi);
+  disegnaSettimana();
 
   popolaColori('colori-fav',  d.colori_fav);
   popolaColori('colori-npos', d.colori_npos);
@@ -3162,6 +3283,146 @@ function calMese(delta) {
   if (_calMese > 12) { _calMese = 1; _calAnno++; }
   if (_calMese < 1)  { _calMese = 12; _calAnno--; }
   disegnaCalendario();
+}
+
+/* ─── NUMEROLOGIA DELLA SETTIMANA ─── */
+
+var PIANETA_NOME = {
+  1: 'Sole', 2: 'Luna', 3: 'Giove', 4: 'Urano', 5: 'Mercurio',
+  6: 'Venere', 7: 'Nettuno', 8: 'Saturno', 9: 'Marte'
+};
+var GIORNI_SETTIMANA_NOMI = ['Lun','Mar','Mer','Gio','Ven','Sab','Dom'];
+
+function _isoWeek(d) {
+  var date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  var day = date.getUTCDay() || 7;
+  date.setUTCDate(date.getUTCDate() + 4 - day);
+  var yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+  return Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
+}
+
+function _settimanaGiorni(anno, settimana) {
+  // Returns array of 7 Date objects for the given ISO week
+  var simple = new Date(anno, 0, 1 + (settimana - 1) * 7);
+  var dow = simple.getDay();
+  var isoStart = new Date(simple);
+  if (dow <= 4) {
+    isoStart.setDate(simple.getDate() - simple.getDay() + 1);
+  } else {
+    isoStart.setDate(simple.getDate() + 8 - simple.getDay());
+  }
+  var days = [];
+  for (var i = 0; i < 7; i++) {
+    var d = new Date(isoStart);
+    d.setDate(isoStart.getDate() + i);
+    days.push(d);
+  }
+  return days;
+}
+
+function disegnaSettimana() {
+  var giorni = _settimanaGiorni(_settAnno, _settSettimanaNum);
+  var oggi = new Date();
+  var oggiStr = oggi.getFullYear() + '-' + oggi.getMonth() + '-' + oggi.getDate();
+
+  // Header label
+  var g0 = giorni[0], g6 = giorni[6];
+  var label = GIORNI_SETTIMANA_NOMI[0] + ' ' + g0.getDate() + '/' + (g0.getMonth()+1) +
+              ' – ' + GIORNI_SETTIMANA_NOMI[6] + ' ' + g6.getDate() + '/' + (g6.getMonth()+1) +
+              '  (' + _settAnno + '  Sett. ' + _settSettimanaNum + ')';
+  document.getElementById('sett-label').textContent = label;
+
+  // Table header: empty cell + 7 days
+  var thead = document.getElementById('sett-thead-days');
+  var thHtml = '<th>N° Psichico</th>';
+  for (var di = 0; di < 7; di++) {
+    var d = giorni[di];
+    var isOggi = (d.getFullYear() + '-' + d.getMonth() + '-' + d.getDate()) === oggiStr;
+    var dayStyle = isOggi ? ' style="color:#fdd835"' : '';
+    thHtml += '<th' + dayStyle + '>' + GIORNI_SETTIMANA_NOMI[di] + '<br>' + d.getDate() + '/' + (d.getMonth()+1) + '</th>';
+  }
+  thead.innerHTML = thHtml;
+
+  // Table body: one row per psychic number
+  var tbody = document.getElementById('sett-tbody');
+  var tbHtml = '';
+  for (var pn = 1; pn <= 9; pn++) {
+    var pData = _giorniTuttiPsichici[pn] || _giorniTuttiPsichici[String(pn)] || {fav:[], red:[]};
+    var favList = pData.fav || [];
+    var redList = pData.red || [];
+
+    // Check if this row corresponds to today's week
+    var isOggiRow = false;
+    for (var di2 = 0; di2 < 7; di2++) {
+      var d2 = giorni[di2];
+      if ((d2.getFullYear() + '-' + d2.getMonth() + '-' + d2.getDate()) === oggiStr) {
+        isOggiRow = true; break;
+      }
+    }
+
+    tbHtml += '<tr>';
+    tbHtml += '<td>' + pn + ' &bull; ' + (PIANETA_NOME[pn] || '') + '</td>';
+
+    for (var di3 = 0; di3 < 7; di3++) {
+      var dayDate = giorni[di3];
+      var dom = dayDate.getDate(); // day of month
+      var isFav = favList.indexOf(dom) >= 0;
+      var isRed = redList.indexOf(dom) >= 0;
+      var isOggiCell = (dayDate.getFullYear() + '-' + dayDate.getMonth() + '-' + dayDate.getDate()) === oggiStr;
+      var dotColor = isFav ? '#4caf50' : (isRed ? '#e53935' : '#555');
+      var cellStyle = isOggiCell ? ' style="background:rgba(212,160,23,0.08)"' : '';
+      tbHtml += '<td' + cellStyle + '><span class="sett-dot" style="background:' + dotColor + '"></span></td>';
+    }
+    tbHtml += '</tr>';
+  }
+  tbody.innerHTML = tbHtml;
+}
+
+function settSettimana(delta) {
+  _settSettimanaNum += delta;
+  if (_settSettimanaNum > 52) { _settSettimanaNum = 1; _settAnno++; }
+  if (_settSettimanaNum < 1)  { _settSettimanaNum = 52; _settAnno--; }
+  disegnaSettimana();
+}
+
+function salvaSettimana() {
+  var giorni = _settimanaGiorni(_settAnno, _settSettimanaNum);
+  var righe = ['NumerologApp — Numerologia della Settimana'];
+  var g0 = giorni[0], g6 = giorni[6];
+  righe.push('Settimana ' + _settSettimanaNum + ' — ' + g0.getDate() + '/' + (g0.getMonth()+1) + '/' + g0.getFullYear() +
+             ' / ' + g6.getDate() + '/' + (g6.getMonth()+1) + '/' + g6.getFullYear());
+  righe.push('');
+
+  // Header row
+  var hdr = 'N° Psichico      ';
+  for (var di = 0; di < 7; di++) {
+    var d = giorni[di];
+    hdr += GIORNI_SETTIMANA_NOMI[di] + ' ' + d.getDate() + '/' + (d.getMonth()+1) + '  ';
+  }
+  righe.push(hdr);
+  righe.push('─'.repeat(hdr.length));
+
+  for (var pn = 1; pn <= 9; pn++) {
+    var pData = _giorniTuttiPsichici[pn] || _giorniTuttiPsichici[String(pn)] || {fav:[], red:[]};
+    var favList = pData.fav || [];
+    var redList = pData.red || [];
+    var riga = (pn + ' ' + (PIANETA_NOME[pn] || '')).padEnd(16) + ' ';
+    for (var di2 = 0; di2 < 7; di2++) {
+      var dom = giorni[di2].getDate();
+      var symb = favList.indexOf(dom) >= 0 ? '🟢' : (redList.indexOf(dom) >= 0 ? '🔴' : '⚪');
+      var colW = (GIORNI_SETTIMANA_NOMI[di2] + ' ' + dom + '/' + (giorni[di2].getMonth()+1) + '  ').length;
+      riga += symb + ' '.repeat(colW - 1);
+    }
+    righe.push(riga);
+  }
+  righe.push('');
+  righe.push('🟢 = Favorevole   🔴 = Da evitare   ⚪ = Neutro');
+
+  var blob = new Blob([righe.join('\n')], {type:'text/plain;charset=utf-8'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'NumerologApp-Settimana' + _settSettimanaNum + '-' + _settAnno + '.txt';
+  a.click();
 }
 
 function popolaColori(id, lista) {
@@ -3362,6 +3623,7 @@ def calcola():
             'giorni_rossi': sorted(giorni_rossi),
             'colori_fav': colori_fav,
             'colori_npos': colori_npos,
+            'giorni_tutti_psichici': GIORNI_TUTTI_PSICHICI,
         })
 
     except Exception as e:
