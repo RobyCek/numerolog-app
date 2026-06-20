@@ -3090,6 +3090,7 @@ HTML = """
       <div class="sett-nav">
         <button onclick="settNav(-1)">◀</button>
         <span class="sett-label" id="sett-label">—</span>
+        <button onclick="settOggi()" style="font-size:12px;width:auto;padding:0 10px;">Oggi</button>
         <button onclick="settNav(+1)">▶</button>
       </div>
       <div class="sett-wrap">
@@ -3464,6 +3465,13 @@ function settNav(delta) {
   _settNum += delta;
   if (_settNum > 52) { _settNum = 1;  _settAnno++; }
   if (_settNum < 1)  { _settNum = 52; _settAnno--; }
+  disegnaSettimana();
+}
+
+function settOggi() {
+  var iw = _isoWeek(new Date());
+  _settAnno = iw.anno;
+  _settNum  = iw.settimana;
   disegnaSettimana();
 }
 
