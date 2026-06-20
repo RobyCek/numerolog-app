@@ -3053,6 +3053,7 @@ HTML = """
         <div class="cal-nav">
           <button onclick="calMese(-1)">◀</button>
           <span class="mese" id="cal-mese"></span>
+          <button onclick="calOggi()" style="font-size:12px;width:auto;padding:0 10px;">Oggi</button>
           <button onclick="calMese(+1)">▶</button>
         </div>
         <div class="cal-grid" id="cal-grid"></div>
@@ -3263,6 +3264,13 @@ function calMese(delta) {
   _calMese += delta;
   if (_calMese > 12) { _calMese = 1; _calAnno++; }
   if (_calMese < 1)  { _calMese = 12; _calAnno--; }
+  disegnaCalendario();
+}
+
+function calOggi() {
+  var oggi = new Date();
+  _calAnno = oggi.getFullYear();
+  _calMese = oggi.getMonth() + 1;
   disegnaCalendario();
 }
 
