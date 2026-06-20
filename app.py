@@ -2459,6 +2459,41 @@ COLORE_HEX = {
     "nessuno":                     None,
 }
 
+def _build_giorni_tutti_psichici() -> dict:
+    """
+    Legge NUMEROLOGIA_TEXT e per ogni numero psichico 1-9 estrae
+    i giorni favorevoli e quelli da bollino rosso (unendo tutte le
+    sezioni karma di quel numero psichico).
+    Restituisce: { 1: {'fav': [1,10,...], 'rossi': [8,17,...]}, ... }
+    """
+    result = {}
+    for n in range(1, 10):
+        fav_set, rossi_set = set(), set()
+        # Trova tutte le sezioni ### N KARMA K
+        pattern = re.compile(rf'^### {n} KARMA \d+', re.MULTILINE)
+        lines = NUMEROLOGIA_TEXT.split('\n')
+        i = 0
+        while i < len(lines):
+            if re.match(rf'^### {n} KARMA \d+', lines[i]):
+                # raccoglie righe fino al prossimo ### o fine
+                block = []
+                j = i + 1
+                while j < len(lines) and not re.match(r'^### ', lines[j]):
+                    block.append(lines[j])
+                    j += 1
+                block_text = '\n'.join(block)
+                f, r = estrai_giorni(block_text)
+                fav_set |= f
+                rossi_set |= r
+                i = j
+            else:
+                i += 1
+        result[n] = {'fav': sorted(fav_set), 'rossi': sorted(rossi_set)}
+    return result
+
+GIORNI_TUTTI_PSICHICI = _build_giorni_tutti_psichici()
+
+
 def _split_personaggi(raw: str) -> list:
     """Divide la stringa dei personaggi per virgola, ignorando le virgole dentro parentesi."""
     voci, corrente, depth = [], [], 0
@@ -2643,12 +2678,6 @@ HTML = """
     font-size: 11px;
     color: #3a3a5a;
     margin-top: 10px;
-    font-style: italic;
-  }
-    text-align: center;
-    font-size: 11px;
-    color: #444;
-    margin-top: 12px;
     font-style: italic;
   }
 
@@ -2842,6 +2871,57 @@ HTML = """
   }
   .btn-salva:active { background: var(--blue2); }
 
+  /* ── Settimana ── */
+  #sett-container { margin-bottom: 16px; }
+  .sett-nav {
+    display: flex; align-items: center;
+    justify-content: space-between; margin-bottom: 10px;
+  }
+  .sett-nav button {
+    background: var(--blue); border: none; border-radius: 8px;
+    color: #fff; font-size: 16px; width: 36px; height: 36px; cursor: pointer;
+  }
+  .sett-label { font-size: 14px; font-weight: 600; color: var(--gold); }
+  .sett-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .sett-table {
+    border-collapse: collapse; min-width: 100%;
+    font-size: 11px;
+  }
+  .sett-table th {
+    background: var(--bg3); color: var(--muted);
+    padding: 6px 4px; text-align: center;
+    border: 1px solid #2a2a4a; font-size: 10px;
+    white-space: nowrap;
+  }
+  .sett-table td {
+    border: 1px solid #2a2a4a; padding: 5px 4px;
+    text-align: center; white-space: nowrap;
+    background: var(--bg2);
+  }
+  .sett-table td.sett-giorno {
+    font-weight: 600; color: var(--text);
+    font-size: 11px; text-align: left;
+    padding-left: 6px; background: var(--bg3);
+    min-width: 88px;
+  }
+  .sett-table td.sett-giorno.oggi-row {
+    color: var(--gold); border-left: 3px solid var(--gold);
+  }
+  .sett-legenda {
+    display: flex; gap: 14px; margin-top: 10px;
+    font-size: 11px; color: var(--muted); flex-wrap: wrap;
+  }
+  .sett-legenda span { display: flex; align-items: center; gap: 5px; }
+  .btn-sett-salva {
+    display: block; width: 100%;
+    background: var(--blue); color: #fff;
+    border: none; border-radius: 10px;
+    font-size: 13px; font-weight: 600;
+    padding: 11px; cursor: pointer;
+    margin-top: 12px; text-align: center;
+  }
+  .btn-sett-salva:active { background: var(--blue2); }
+
   /* ── Errore ── */
   .errore {
     background: #3a1010;
@@ -3001,6 +3081,28 @@ HTML = """
     </div>
 
   </div><!-- /risultati -->
+
+  <!-- NUMEROLOGIA DELLA SETTIMANA (sempre visibile) -->
+  <div id="sett-container">
+    <div class="card">
+      <h2>🗓️ Numerologia della Settimana</h2>
+      <div class="sett-nav">
+        <button onclick="settNav(-1)">◀</button>
+        <span class="sett-label" id="sett-label">—</span>
+        <button onclick="settNav(+1)">▶</button>
+      </div>
+      <div class="sett-wrap">
+        <table class="sett-table" id="sett-table"></table>
+      </div>
+      <div class="sett-legenda">
+        <span>🟢 Favorevole</span>
+        <span>🔴 Da evitare</span>
+        <span>⚪ Neutro</span>
+      </div>
+      <button class="btn-sett-salva" onclick="salvaSettimana()">💾 Salva settimana</button>
+    </div>
+  </div>
+
 </div><!-- /container -->
 
 <script>
@@ -3259,7 +3361,138 @@ window.onload = function() {
     if (p.secondo_nome) document.getElementById('secondo_nome').value = p.secondo_nome;
     if (p.data)         document.getElementById('data').value = p.data;
   } catch(e) {}
+  disegnaSettimana();
 };
+
+/* ── NUMEROLOGIA DELLA SETTIMANA ── */
+
+var PIANETI_PSICHICI = {
+  1:'Sole', 2:'Luna', 3:'Giove', 4:'Urano/Rahu', 5:'Mercurio',
+  6:'Venere', 7:'Nettuno/Ketu', 8:'Saturno', 9:'Marte'
+};
+
+var _giorniTuttiPsichici = {{ giorni_tutti_psichici | tojson }};
+
+var _settAnno, _settNum;  // anno ISO e numero settimana ISO correnti
+
+function _isoWeek(d) {
+  // Restituisce {anno, settimana} ISO 8601
+  var tmp = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  var dayNum = tmp.getUTCDay() || 7;
+  tmp.setUTCDate(tmp.getUTCDate() + 4 - dayNum);
+  var yearStart = new Date(Date.UTC(tmp.getUTCFullYear(), 0, 1));
+  return {
+    anno: tmp.getUTCFullYear(),
+    settimana: Math.ceil((((tmp - yearStart) / 86400000) + 1) / 7)
+  };
+}
+
+function _giorniSettimana(anno, sett) {
+  // Lunedì della settimana ISO
+  var jan4 = new Date(Date.UTC(anno, 0, 4));
+  var dayOfJan4 = jan4.getUTCDay() || 7;
+  var monday = new Date(jan4);
+  monday.setUTCDate(jan4.getUTCDate() - (dayOfJan4 - 1) + (sett - 1) * 7);
+  var giorni = [];
+  for (var i = 0; i < 7; i++) {
+    var d = new Date(monday);
+    d.setUTCDate(monday.getUTCDate() + i);
+    giorni.push(d);
+  }
+  return giorni;
+}
+
+var NOMI_GIORNI = ['Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato','Domenica'];
+var NOMI_MESI_SHORT = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
+
+function disegnaSettimana() {
+  var oggi = new Date();
+  if (_settAnno === undefined) {
+    var iw = _isoWeek(oggi);
+    _settAnno = iw.anno;
+    _settNum  = iw.settimana;
+  }
+
+  var giorni = _giorniSettimana(_settAnno, _settNum);
+  var g0 = giorni[0], g6 = giorni[6];
+  document.getElementById('sett-label').textContent =
+    'Sett. ' + _settNum + ' — ' +
+    g0.getUTCDate() + ' ' + NOMI_MESI_SHORT[g0.getUTCMonth()] + ' / ' +
+    g6.getUTCDate() + ' ' + NOMI_MESI_SHORT[g6.getUTCMonth()] + ' ' + _settAnno;
+
+  // Intestazione tabella
+  var html = '<thead><tr><th>Giorno</th>';
+  for (var n = 1; n <= 9; n++) {
+    html += '<th>' + n + '<br><span style="font-size:9px;color:#555">' + PIANETI_PSICHICI[n] + '</span></th>';
+  }
+  html += '</tr></thead><tbody>';
+
+  // Oggi per evidenziare riga
+  var oggiUTC = new Date(Date.UTC(oggi.getFullYear(), oggi.getMonth(), oggi.getDate()));
+
+  for (var gi = 0; gi < 7; gi++) {
+    var d = giorni[gi];
+    var giorno_num = d.getUTCDate();
+    var isOggi = (d.getTime() === oggiUTC.getTime());
+    var clsGiorno = 'sett-giorno' + (isOggi ? ' oggi-row' : '');
+    var dataStr = NOMI_GIORNI[gi] + ' ' + giorno_num + ' ' + NOMI_MESI_SHORT[d.getUTCMonth()];
+    html += '<tr><td class="' + clsGiorno + '">' + dataStr + '</td>';
+
+    for (var n = 1; n <= 9; n++) {
+      var dati_n = _giorniTuttiPsichici[n] || {fav:[], rossi:[]};
+      var riduci = giorno_num > 9 ? (Math.floor(giorno_num/10) + (giorno_num%10)) : giorno_num;
+      var isFav   = dati_n.fav.indexOf(giorno_num) >= 0 || dati_n.fav.indexOf(riduci) >= 0;
+      var isRosso = dati_n.rossi.indexOf(giorno_num) >= 0 || dati_n.rossi.indexOf(riduci) >= 0;
+      var dot = isFav ? '🟢' : (isRosso ? '🔴' : '⚪');
+      html += '<td>' + dot + '</td>';
+    }
+    html += '</tr>';
+  }
+  html += '</tbody>';
+  document.getElementById('sett-table').innerHTML = html;
+}
+
+function settNav(delta) {
+  _settNum += delta;
+  if (_settNum > 52) { _settNum = 1;  _settAnno++; }
+  if (_settNum < 1)  { _settNum = 52; _settAnno--; }
+  disegnaSettimana();
+}
+
+function salvaSettimana() {
+  var giorni = _giorniSettimana(_settAnno, _settNum);
+  var righe = ['Numerologia della Settimana ' + _settNum + ' (' + _settAnno + ')', ''];
+  // header
+  var hdr = 'Giorno          ';
+  for (var n = 1; n <= 9; n++) hdr += ('  N' + n + ' ' + PIANETI_PSICHICI[n]).substring(0,10);
+  righe.push(hdr);
+  righe.push('-'.repeat(hdr.length));
+
+  var oggiUTC = new Date();
+  oggiUTC = new Date(Date.UTC(oggiUTC.getFullYear(), oggiUTC.getMonth(), oggiUTC.getDate()));
+
+  for (var gi = 0; gi < 7; gi++) {
+    var d = giorni[gi];
+    var giorno_num = d.getUTCDate();
+    var riga = (NOMI_GIORNI[gi] + ' ' + giorno_num + ' ' + NOMI_MESI_SHORT[d.getUTCMonth()]).padEnd(16);
+    for (var n = 1; n <= 9; n++) {
+      var dati_n = _giorniTuttiPsichici[n] || {fav:[], rossi:[]};
+      var riduci = giorno_num > 9 ? (Math.floor(giorno_num/10) + (giorno_num%10)) : giorno_num;
+      var isFav   = dati_n.fav.indexOf(giorno_num) >= 0 || dati_n.fav.indexOf(riduci) >= 0;
+      var isRosso = dati_n.rossi.indexOf(giorno_num) >= 0 || dati_n.rossi.indexOf(riduci) >= 0;
+      riga += isFav ? '  ✅ ' : (isRosso ? '  ❌ ' : '  ○  ');
+    }
+    righe.push(riga);
+  }
+  righe.push('');
+  righe.push('✅ Favorevole   ❌ Da evitare   ○ Neutro');
+
+  var blob = new Blob([righe.join('\\n')], {type:'text/plain;charset=utf-8'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'Settimana-' + _settAnno + '-W' + _settNum + '.txt';
+  a.click();
+}
 
 
 </script>
@@ -3272,8 +3505,12 @@ window.onload = function() {
 # ══════════════════════════════════════════════
 @app.route('/')
 def index():
+    rendered = HTML.replace(
+        '{{ giorni_tutti_psichici | tojson }}',
+        json.dumps(GIORNI_TUTTI_PSICHICI)
+    )
     from flask import Response
-    return Response(HTML, mimetype="text/html")
+    return Response(rendered, mimetype="text/html")
 
 
 @app.route('/calcola', methods=['POST'])
